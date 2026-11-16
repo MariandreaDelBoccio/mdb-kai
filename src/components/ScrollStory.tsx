@@ -8,7 +8,7 @@ const PHASES: { key: PhaseKey; from: number }[] = [
   { key: "explode", from: 0.09 },
   { key: "rebuild", from: 0.48 },
   { key: "extras", from: 0.65 },
-  { key: "box", from: 0.77 },
+  { key: "counter", from: 0.77 },
   { key: "book", from: 0.935 },
 ];
 

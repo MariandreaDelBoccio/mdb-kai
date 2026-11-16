@@ -30,9 +30,12 @@ const T = {
   legendsOut: [0.455, 0.49],
   rebuild: [0.48, 0.64],
   extras: [0.65, 0.76],
-  rise: [0.745, 0.8],
-  drop: [0.8, 0.885],
-  lid: [0.885, 0.94],
+  /** The counter slides in under the bowl. */
+  counter: [0.745, 0.82],
+  /** The lantern is lowered and switched on. */
+  lantern: [0.8, 0.9],
+  /** Tea arrives; the room settles into lantern light. */
+  tea: [0.885, 0.94],
 } as const;
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
@@ -40,6 +43,12 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+/** Gentle overshoot: the lantern swings past its mark and settles. */
+const easeOutBack = (t: number) => {
+  const c1 = 1.1;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
 const seg = (p: number, a: number, b: number) => clamp01((p - a) / (b - a));
 
 function rng(seed: number) {
@@ -643,118 +652,229 @@ function Chopsticks() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Takeaway box                                                        */
+/* Counter, lantern, tea                                               */
 /* ------------------------------------------------------------------ */
 
-const BOX_W = 2.7;
-const BOX_H = 1.3;
-const BOX_T = 0.06;
+const COUNTER_W = 9.5;
+const COUNTER_D = 2.5;
+const COUNTER_H = 0.22;
+const LANTERN_H = 1.8;
+const CORD = 5;
 
-function useBoxTextures() {
-  return useMemo(() => {
-    const rand = rng(3);
-    const speckle = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-      ctx.fillStyle = "#efe4cc";
+/** Hinoki bar: pale planks, long grain, two seams. */
+function Counter() {
+  const wood = useMemo(() => {
+    const rand = rng(11);
+    return paintedTexture(1536, 580, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#ead3a3");
+      g.addColorStop(1, "#dcc088");
+      ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 3500; i++) {
-        ctx.fillStyle = `rgba(120,90,50,${0.03 + rand() * 0.06})`;
-        ctx.fillRect(rand() * w, rand() * h, 1 + rand() * 2, 1 + rand() * 2);
+      for (let i = 0; i < 320; i++) {
+        const x = rand() * w;
+        const y = rand() * h;
+        const len = 160 + rand() * 640;
+        ctx.strokeStyle = `rgba(${118 + Math.floor(rand() * 30)},${
+          78 + Math.floor(rand() * 30)
+        },40,${0.05 + rand() * 0.1})`;
+        ctx.lineWidth = 0.6 + rand() * 1.8;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.bezierCurveTo(
+          x + len * 0.3,
+          y + (rand() - 0.5) * 7,
+          x + len * 0.7,
+          y + (rand() - 0.5) * 7,
+          x + len,
+          y + (rand() - 0.5) * 4,
+        );
+        ctx.stroke();
       }
-    };
-    const wall = paintedTexture(1024, 512, (ctx, w, h) => {
-      speckle(ctx, w, h);
-      ctx.fillStyle = "#a3261a";
-      ctx.fillRect(0, h * 0.72, w, h * 0.12);
-      ctx.fillStyle = "#1a0f0c";
-      ctx.textBaseline = "alphabetic";
-      ctx.font = `600 190px ${DISPLAY}`;
-      ctx.fillText("KAI", w * 0.08, h * 0.5);
-      ctx.font = `500 54px ${DISPLAY}`;
-      ctx.fillText("ラーメン", w * 0.08, h * 0.64);
-    });
-    const lid = paintedTexture(1024, 1024, (ctx, w, h) => {
-      speckle(ctx, w, h);
-      ctx.fillStyle = "#a3261a";
-      ctx.fillRect(0, h * 0.78, w, h * 0.09);
-      ctx.fillStyle = "#1a0f0c";
-      ctx.textAlign = "center";
-      ctx.font = `600 330px ${DISPLAY}`;
-      ctx.fillText("KAI", w / 2, h * 0.5);
-      ctx.font = `500 70px ${DISPLAY}`;
-      ctx.fillText("ラーメン", w / 2, h * 0.64);
-    });
-    repaintWhenFontsReady([wall, lid]);
-    return { wall: wall.tex, lid: lid.tex };
+      ctx.fillStyle = "rgba(96,58,26,.38)";
+      [h * 0.34, h * 0.67].forEach((y) => ctx.fillRect(0, y, w, 2));
+    }).tex;
   }, []);
+
+  // BoxGeometry face order: +x, -x, +y (top), -y, +z (front), -z
+  return (
+    <mesh position={[0, -COUNTER_H / 2 - 0.004, 0]} receiveShadow>
+      <boxGeometry args={[COUNTER_W, COUNTER_H, COUNTER_D]} />
+      <meshStandardMaterial attach="material-0" color="#c8a56c" roughness={0.7} />
+      <meshStandardMaterial attach="material-1" color="#c8a56c" roughness={0.7} />
+      <meshStandardMaterial attach="material-2" map={wood} color="#d8b988" roughness={0.5} />
+      <meshStandardMaterial attach="material-3" color="#c8a56c" roughness={0.7} />
+      <meshStandardMaterial attach="material-4" color="#caa86f" roughness={0.6} />
+      <meshStandardMaterial attach="material-5" color="#c8a56c" roughness={0.7} />
+    </mesh>
+  );
 }
 
-function BoxShell({
-  lidRef,
+/** Chōchin: ribbed paper lantern, ラーメン running down the front. */
+function Lantern({
+  matRef,
+  lightRef,
 }: {
-  lidRef: MutableRefObject<THREE.Group | null>;
+  matRef: MutableRefObject<THREE.MeshStandardMaterial | null>;
+  lightRef: MutableRefObject<THREE.PointLight | null>;
 }) {
-  const { wall, lid } = useBoxTextures();
-  const paper = <meshStandardMaterial map={wall} roughness={0.85} />;
-  const half = BOX_W / 2;
+  const { geo, map } = useMemo(() => {
+    const N = 96;
+    const ribs = 16;
+    const R = 0.92;
+    const r0 = 0.44;
+    const pts: THREE.Vector2[] = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const body = r0 + (R - r0) * Math.pow(Math.sin(Math.PI * t), 0.62);
+      const rib =
+        1 - 0.014 * Math.pow(0.5 + 0.5 * Math.cos(t * Math.PI * 2 * ribs), 5);
+      pts.push(new THREE.Vector2(body * rib, (t - 0.5) * LANTERN_H));
+    }
+    const geo = new THREE.LatheGeometry(pts, 72);
+
+    const painted = paintedTexture(2048, 768, (ctx, w, h) => {
+      ctx.fillStyle = "#f3e3c0";
+      ctx.fillRect(0, 0, w, h);
+      const rand = rng(31);
+      for (let i = 0; i < 2600; i++) {
+        ctx.fillStyle = `rgba(150,110,60,${0.02 + rand() * 0.05})`;
+        ctx.fillRect(rand() * w, rand() * h, 1 + rand() * 3, 1 + rand() * 2);
+      }
+      // rib hairlines
+      ctx.fillStyle = "rgba(90,50,20,.34)";
+      for (let k = 0; k <= ribs; k++) ctx.fillRect(0, (k * h) / ribs - 1, w, 2);
+      // red bands
+      ctx.fillStyle = "#a3261a";
+      ctx.fillRect(0, 0, w, h * 0.1);
+      ctx.fillRect(0, h * 0.9, w, h * 0.1);
+      // ラーメン, vertical
+      ctx.save();
+      ctx.translate(w / 2, 0);
+      ctx.scale(0.84, 1);
+      ctx.fillStyle = "#a3261a";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `700 ${h * 0.158}px ${DISPLAY}`;
+      const glyphs = ["ラ", "ー", "メ", "ン"];
+      glyphs.forEach((ch, i) => {
+        const y = h * (0.225 + i * 0.172);
+        if (ch === "ー") {
+          ctx.fillRect(-h * 0.014, y - h * 0.062, h * 0.028, h * 0.124);
+        } else {
+          ctx.fillText(ch, 0, y);
+        }
+      });
+      ctx.restore();
+      // KAI, cream on the lower band
+      ctx.fillStyle = "#f4e8d2";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `600 ${h * 0.062}px ${DISPLAY}`;
+      ctx.fillText("K  A  I", w / 2, h * 0.952);
+    });
+    repaintWhenFontsReady([painted]);
+    return { geo, map: painted.tex };
+  }, []);
+
+  const body = useRef<THREE.Group>(null);
+  useLayoutEffect(() => {
+    // Layer 1: lit and seen, but kept out of the contact-shadow pass so the
+    // lantern lights the counter instead of shading it.
+    body.current?.traverse((o) => o.layers.set(1));
+  }, []);
+
+  const lacquer = (
+    <meshPhysicalMaterial color="#1a0f0c" roughness={0.35} clearcoat={0.8} />
+  );
+
   return (
-    <group>
-      <mesh position={[0, BOX_T / 2, 0]} receiveShadow>
-        <boxGeometry args={[BOX_W, BOX_T, BOX_W]} />
-        <meshStandardMaterial color="#e6d9bd" roughness={0.9} />
+    <group ref={body}>
+      <mesh geometry={geo} rotation={[0, Math.PI, 0]}>
+        <meshStandardMaterial
+          ref={matRef}
+          map={map}
+          emissiveMap={map}
+          emissive="#ffc487"
+          emissiveIntensity={0}
+          roughness={0.86}
+          side={THREE.DoubleSide}
+        />
       </mesh>
-      {[-1, 1].map((s) => (
-        <mesh
-          key={`z${s}`}
-          position={[0, BOX_H / 2, (half - BOX_T / 2) * s]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={[BOX_W, BOX_H, BOX_T]} />
-          {paper}
-        </mesh>
-      ))}
-      {[-1, 1].map((s) => (
-        <mesh
-          key={`x${s}`}
-          position={[(half - BOX_T / 2) * s, BOX_H / 2, 0]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={[BOX_T, BOX_H, BOX_W - BOX_T * 2]} />
-          {paper}
-        </mesh>
-      ))}
-      <group ref={lidRef} position={[0, BOX_H, -half]}>
-        <mesh position={[0, BOX_T / 2, half]} receiveShadow>
-          <boxGeometry args={[BOX_W, BOX_T, BOX_W]} />
-          <meshStandardMaterial
-            attach="material-0"
-            color="#e6d9bd"
-            roughness={0.9}
-          />
-          <meshStandardMaterial
-            attach="material-1"
-            color="#e6d9bd"
-            roughness={0.9}
-          />
-          <meshStandardMaterial attach="material-2" map={lid} roughness={0.8} />
-          <meshStandardMaterial
-            attach="material-3"
-            color="#e6d9bd"
-            roughness={0.9}
-          />
-          <meshStandardMaterial
-            attach="material-4"
-            color="#e6d9bd"
-            roughness={0.9}
-          />
-          <meshStandardMaterial
-            attach="material-5"
-            color="#e6d9bd"
-            roughness={0.9}
-          />
-        </mesh>
-      </group>
+      <mesh position={[0, LANTERN_H / 2 + 0.05, 0]}>
+        <cylinderGeometry args={[0.47, 0.5, 0.12, 40]} />
+        {lacquer}
+      </mesh>
+      <mesh position={[0, -LANTERN_H / 2 - 0.05, 0]}>
+        <cylinderGeometry args={[0.5, 0.47, 0.12, 40]} />
+        {lacquer}
+      </mesh>
+      {/* cord up through the ceiling */}
+      <mesh position={[0, LANTERN_H / 2 + 0.11 + CORD / 2 - 0.06, 0]}>
+        <cylinderGeometry args={[0.013, 0.013, CORD, 6]} />
+        <meshStandardMaterial color="#1a0f0c" roughness={0.6} />
+      </mesh>
+      {/* tassel */}
+      <mesh position={[0, -LANTERN_H / 2 - 0.34, 0]}>
+        <coneGeometry args={[0.06, 0.36, 12]} />
+        <meshStandardMaterial color="#a3261a" roughness={0.6} />
+      </mesh>
+      <pointLight
+        ref={lightRef}
+        color="#ff9d57"
+        intensity={0}
+        distance={10}
+        decay={1.5}
+      />
+    </group>
+  );
+}
+
+/** Yunomi: the same porcelain and red band as the bowl, scaled down. */
+function TeaCup() {
+  const geo = useMemo(() => {
+    const outer: [number, number][] = [
+      [0, 0],
+      [0.14, 0],
+      [0.147, 0.02],
+      [0.2, 0.1],
+      [0.235, 0.22],
+      [0.24, 0.25],
+    ];
+    const inner: [number, number][] = [
+      [0.226, 0.25],
+      [0.19, 0.1],
+      [0.12, 0.045],
+      [0, 0.04],
+    ];
+    return new THREE.LatheGeometry(
+      [...outer, ...inner].map(([r, y]) => new THREE.Vector2(r, y)),
+      48,
+    );
+  }, []);
+  return (
+    <group scale={1.35}>
+      <mesh geometry={geo} castShadow receiveShadow>
+        <meshPhysicalMaterial
+          color="#f2ebdb"
+          roughness={0.22}
+          clearcoat={1}
+          clearcoatRoughness={0.08}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0, 0.17, 0]}>
+        <cylinderGeometry args={[0.236, 0.228, 0.045, 48, 1, true]} />
+        <meshStandardMaterial
+          color="#a3261a"
+          roughness={0.35}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.212, 40]} />
+        <meshPhysicalMaterial color="#8b9a46" roughness={0.12} clearcoat={1} />
+      </mesh>
     </group>
   );
 }
@@ -811,17 +931,30 @@ type LabelRefs = MutableRefObject<(HTMLDivElement | null)[]>;
 
 const ANCHOR = new THREE.Vector3();
 
+type Rig = {
+  amb: MutableRefObject<THREE.AmbientLight | null>;
+  dir: MutableRefObject<THREE.DirectionalLight | null>;
+};
+
+/** Distance from the lantern's centre up to the top of its cord. */
+const CORD_TOP = LANTERN_H / 2 + CORD + 0.05;
+
 function Piece({
   progress,
   still,
   labels,
-}: SceneProps & { labels: LabelRefs }) {
-  const { camera, size } = useThree();
+  rig,
+}: SceneProps & { labels: LabelRefs; rig: Rig }) {
+  const { camera, size, scene } = useThree();
   const smooth = useRef(0);
+  const night = useRef(-1);
   const root = useRef<THREE.Group>(null);
   const piece = useRef<THREE.Group>(null);
-  const boxGroup = useRef<THREE.Group>(null);
-  const lid = useRef<THREE.Group | null>(null);
+  const counter = useRef<THREE.Group>(null);
+  const lampPivot = useRef<THREE.Group>(null);
+  const lampMat = useRef<THREE.MeshStandardMaterial | null>(null);
+  const lampLight = useRef<THREE.PointLight | null>(null);
+  const tea = useRef<THREE.Group>(null);
   const shadow = useRef<THREE.Group>(null);
   const steam = useRef<THREE.Group | null>(null);
   const extrasYaw = useRef<THREE.Group>(null);
@@ -831,6 +964,11 @@ function Piece({
   const layerRefs = useRef<LayerRef[]>(
     LAYER_DEFS.map(() => ({ pos: null, yaw: null })),
   );
+
+  // The lantern lives on layer 1 (see Lantern); the camera has to see it.
+  useLayoutEffect(() => {
+    camera.layers.enable(1);
+  }, [camera]);
 
   useFrame((state, dt) => {
     const target = still ? 0 : progress.current;
@@ -846,22 +984,32 @@ function Piece({
     const rebuildSeg = seg(p, T.rebuild[0], T.rebuild[1]);
     const eMain = ease(explodeSeg) * (1 - ease(rebuildSeg));
     const extrasSeg = seg(p, T.extras[0], T.extras[1]);
-    const rise = easeOut(seg(p, T.rise[0], T.rise[1]));
-    const drop = ease(seg(p, T.drop[0], T.drop[1]));
-    const lidSeg = ease(seg(p, T.lid[0], T.lid[1]));
+    const slideRaw = seg(p, T.counter[0], T.counter[1]);
+    const slide = easeOut(slideRaw);
+    const lampRaw = seg(p, T.lantern[0], T.lantern[1]);
+    const lampDrop = easeOutBack(lampRaw);
+    // light comes on as the lantern arrives, not before
+    const lit = ease(seg(p, T.lantern[0] + (T.lantern[1] - T.lantern[0]) * 0.5, T.tea[1]));
+    const teaSeg = easeOut(seg(p, T.tea[0], T.tea[1]));
 
     const idle = still
       ? 0
-      : Math.sin(time * 0.45) * 0.1 * (1 - eMain) * (1 - rise);
-    const yaw = -0.5 + 0.75 * eMain + idle + 0.2 * drop;
+      : Math.sin(time * 0.45) * 0.1 * (1 - eMain) * (1 - 0.75 * slide);
+    const yaw = -0.5 + 0.75 * eMain + idle + 0.3 * slide;
 
     // layers
     layerRefs.current.forEach((ref, i) => {
-      const up = ease(clamp01((explodeSeg - (5 - i) * 0.07) / 0.65));
+      // layers pop off with a small overshoot, top first, and settle back in order
+      const up = easeOutBack(clamp01((explodeSeg - (5 - i) * 0.07) / 0.65));
       const down = ease(clamp01((rebuildSeg - i * 0.07) / 0.65));
       const e = up * (1 - down);
-      if (ref.pos) ref.pos.position.y = e * LAYER_DEFS[i].dy * spread;
-      if (ref.yaw) ref.yaw.rotation.y = yaw + e * (i % 2 ? 0.28 : -0.28);
+      if (ref.pos) {
+        // a leaning tower: every layer drifts and tips a little further than the one below
+        const lean = portrait ? 0.045 : aspect < 1.4 ? 0.13 : 0.2;
+        ref.pos.position.set(-e * i * lean, e * LAYER_DEFS[i].dy * spread, 0);
+        ref.pos.rotation.z = e * i * (portrait ? 0.01 : 0.018);
+      }
+      if (ref.yaw) ref.yaw.rotation.y = yaw + e * (i - 2.5) * 0.2;
       const label = labels.current[i];
       if (label) {
         const inA = T.legendsIn + i * 0.018;
@@ -924,23 +1072,45 @@ function Piece({
       [0, -0.35, 0],
     );
 
-    // box + drop
-    const boxY = lerp(-7, -0.9, rise);
-    if (boxGroup.current) {
-      boxGroup.current.position.y = boxY;
-      boxGroup.current.visible = rise > 0.001;
-      boxGroup.current.rotation.y = -0.28 * rise;
+    // counter, lantern, tea
+    if (counter.current) {
+      counter.current.visible = slide > 0.001;
+      counter.current.position.set(lerp(13, 0, slide), 0, 0.05);
     }
-    if (lid.current) lid.current.rotation.x = lerp(-1.95, 0, lidSeg);
     if (piece.current) {
-      piece.current.position.y = -0.84 * drop;
-      piece.current.scale.setScalar(lerp(1, 0.8, drop));
+      // lifted a hand's breadth while the counter slides under, then set down
+      piece.current.position.y = 0.2 * Math.sin(Math.PI * slideRaw);
     }
-    if (shadow.current) shadow.current.position.y = lerp(0.001, -0.9, rise);
+    if (lampPivot.current) {
+      const g = lampPivot.current;
+      g.visible = lampRaw > 0.001;
+      const y = lerp(9.5, 3.1, lampDrop);
+      g.position.set(0, y + CORD_TOP, 0);
+      const swing =
+        Math.sin(time * 1.9) * 0.07 * (1 - clamp01(lampRaw)) +
+        Math.sin(time * 0.9) * 0.012 * lit;
+      g.rotation.z = still ? 0 : swing;
+    }
+    if (lampMat.current) lampMat.current.emissiveIntensity = lit * 0.95;
+    if (lampLight.current) lampLight.current.intensity = lit * 34;
+    if (tea.current) {
+      tea.current.visible = teaSeg > 0.001;
+      tea.current.position.set(lerp(-6, -1.95, teaSeg), 0, 0.7);
+      tea.current.rotation.y = lerp(1.2, 0.2, teaSeg);
+    }
+
+    // the room settles into lantern light
+    if (rig.amb.current) rig.amb.current.intensity = lerp(0.25, 0.1, lit);
+    if (rig.dir.current) rig.dir.current.intensity = lerp(2.4, 1.0, lit);
+    scene.environmentIntensity = lerp(0.9, 0.4, lit);
+    if (Math.abs(night.current - lit) > 0.004) {
+      night.current = lit;
+      document.documentElement.style.setProperty("--night", lit.toFixed(3));
+    }
 
     // steam
     if (steam.current) {
-      const base = (1 - eMain) * (1 - drop) * (still ? 0.16 : 0.2);
+      const base = (1 - eMain) * (still ? 0.16 : 0.2) * (1 + 0.7 * lit);
       steam.current.children.forEach((child, i) => {
         const s = child as THREE.Sprite;
         const cycle = (((time * 0.12 + i / 7) % 1) + 1) % 1;
@@ -960,20 +1130,20 @@ function Piece({
     const cam = camera as THREE.PerspectiveCamera;
     const tan = Math.tan((cam.fov * Math.PI) / 360);
     const narrow = aspect < 1.4;
-    const needH = lerp(lerp(3.6, 7.2 * (portrait ? 1.25 : 1), eMain), 6.4, rise);
+    const needH = lerp(lerp(3.6, 7.2 * (portrait ? 1.25 : 1), eMain), portrait ? 7.4 : 6.6, slide);
     const needW = lerp(
       lerp(3.4, portrait ? 4.7 : narrow ? 5.2 : 4.6, eMain),
-      portrait ? 4.6 : 5.8,
-      rise,
+      portrait ? 4.4 : 6.2,
+      slide,
     );
     const dist = Math.max(needH / (2 * tan), needW / (2 * tan * aspect));
-    const elev = (lerp(lerp(32, 20, eMain), 30, rise) * Math.PI) / 180;
-    const ty = lerp(lerp(0.5, portrait ? 1.7 : 1.2, eMain), -0.65, rise);
+    const elev = (lerp(lerp(32, 20, eMain), 17, slide) * Math.PI) / 180;
+    const ty = lerp(lerp(0.5, portrait ? 1.7 : 1.2, eMain), portrait ? 1.7 : 1.22, slide);
     cam.position.set(0, ty + dist * Math.sin(elev), dist * Math.cos(elev));
     cam.lookAt(0, ty, 0);
     const shift = (portrait ? 0.21 : narrow ? 0.09 : 0) * eMain;
     if (root.current) {
-      root.current.position.x = -2 * dist * tan * aspect * shift * (1 - rise);
+      root.current.position.x = -2 * dist * tan * aspect * shift * (1 - slide);
       root.current.updateMatrixWorld(true);
     }
     cam.updateMatrixWorld();
@@ -1000,7 +1170,7 @@ function Piece({
           scale={11}
           blur={2.8}
           far={9}
-          color="#2a0905"
+          color="#05070f"
         />
       </group>
 
@@ -1037,8 +1207,18 @@ function Piece({
         <Steam groupRef={steam} />
       </group>
 
-      <group ref={boxGroup} visible={false}>
-        <BoxShell lidRef={lid} />
+      <group ref={counter} visible={false}>
+        <Counter />
+      </group>
+
+      <group ref={tea} visible={false}>
+        <TeaCup />
+      </group>
+
+      <group ref={lampPivot} visible={false}>
+        <group position={[0, -CORD_TOP, 0]}>
+          <Lantern matRef={lampMat} lightRef={lampLight} />
+        </group>
       </group>
     </group>
   );
@@ -1046,6 +1226,9 @@ function Piece({
 
 export function RamenScene(props: SceneProps) {
   const labels = useRef<(HTMLDivElement | null)[]>([]);
+  const amb = useRef<THREE.AmbientLight | null>(null);
+  const dir = useRef<THREE.DirectionalLight | null>(null);
+  const rig = useMemo(() => ({ amb, dir }), []);
   return (
     <>
       <Canvas
@@ -1054,8 +1237,9 @@ export function RamenScene(props: SceneProps) {
         camera={{ fov: 30, near: 0.1, far: 80, position: [0, 3.2, 6.4] }}
         gl={{ antialias: true, alpha: true }}
       >
-        <ambientLight intensity={0.25} />
+        <ambientLight ref={amb} intensity={0.25} />
         <directionalLight
+          ref={dir}
           position={[3.5, 7, 4]}
           intensity={2.4}
           color="#fff1dc"
@@ -1088,7 +1272,7 @@ export function RamenScene(props: SceneProps) {
             intensity={1.6}
             position={[6, 3, -2]}
             scale={[4, 5, 1]}
-            color="#ffb59a"
+            color="#a9c0ff"
           />
           <Lightformer
             form="ring"
@@ -1105,7 +1289,7 @@ export function RamenScene(props: SceneProps) {
             color="#ffe2c4"
           />
         </Environment>
-        <Piece {...props} labels={labels} />
+        <Piece {...props} labels={labels} rig={rig} />
       </Canvas>
       <div className="legends">
         {LAYER_DEFS.map((def, i) => (

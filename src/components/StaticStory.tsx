@@ -6,7 +6,7 @@ import { LazyRamenScene } from "./LazyScene";
 function BowlFallback() {
   return (
     <svg className="bowl-fallback" viewBox="0 0 320 220" role="img" aria-label="Ramen bowl">
-      <ellipse cx="160" cy="192" rx="110" ry="12" fill="#2a0905" opacity=".35" />
+      <ellipse cx="160" cy="192" rx="110" ry="12" fill="#05070f" opacity=".4" />
       <path d="M34 92h252c0 56-52 96-126 96S34 148 34 92z" fill="#f2ebdb" />
       <path d="M44 120h232c-6 10-12 20-24 30H68c-12-10-18-20-24-30z" fill="#a3261a" />
       <ellipse cx="160" cy="92" rx="126" ry="30" fill="#f6f1e5" />

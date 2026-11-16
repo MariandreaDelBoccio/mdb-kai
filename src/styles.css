@@ -1,7 +1,8 @@
 :root {
-  --lantern: #a3261a;
-  --lantern-deep: #7d1b12;
-  --lantern-glow: #bb3221;
+  --bg: #1d2b4c;
+  --bg-deep: #111a31;
+  --bg-glow: #2f4474;
+  --bg-edge: #16203c;
   --cream: #f4e8d2;
   --cream-dim: rgba(244, 232, 210, 0.86);
   --ink: #1a0f0c;
@@ -10,6 +11,8 @@
   --pad: clamp(20px, 4vw, 56px);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --hero: 1;
+  /* 0 → 1 as the lantern is lit at the end of the story */
+  --night: 0;
   color-scheme: dark;
 }
 
@@ -20,12 +23,12 @@
 }
 
 html {
-  scrollbar-color: var(--cream) var(--lantern-deep);
+  scrollbar-color: var(--cream) var(--bg-deep);
 }
 
 body {
   margin: 0;
-  background: var(--lantern);
+  background: var(--bg);
   color: var(--cream);
   font-family: var(--font-ui);
   font-size: 1rem;
@@ -35,7 +38,7 @@ body {
 
 ::selection {
   background: var(--cream);
-  color: var(--lantern);
+  color: var(--bg);
 }
 
 :focus-visible {
@@ -138,7 +141,20 @@ p {
   height: 100vh;
   height: 100svh;
   overflow: hidden;
-  background: radial-gradient(60% 55% at 50% 56%, var(--lantern-glow) 0%, var(--lantern) 55%, #861d13 100%);
+  background: radial-gradient(60% 55% at 50% 56%, var(--bg-glow) 0%, var(--bg) 55%, var(--bg-edge) 100%);
+}
+
+/* Lantern light: the room dims and a warm pool opens above the bar. */
+.story-sticky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: var(--night);
+  background:
+    radial-gradient(36% 42% at 50% 34%, rgba(255, 176, 104, 0.42), transparent 74%),
+    radial-gradient(95% 85% at 50% 52%, transparent 38%, rgba(4, 7, 18, 0.68) 100%);
 }
 
 .mark {
@@ -332,7 +348,7 @@ p {
   border: 1px solid var(--cream);
   border-radius: 2px;
   background: var(--cream);
-  color: var(--lantern);
+  color: var(--bg);
   font: 700 0.82rem/1 var(--font-ui);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -372,7 +388,7 @@ p {
   min-height: 100vh;
   min-height: 100svh;
   overflow: hidden;
-  background: radial-gradient(60% 55% at 50% 56%, var(--lantern-glow) 0%, var(--lantern) 55%, #861d13 100%);
+  background: radial-gradient(60% 55% at 50% 56%, var(--bg-glow) 0%, var(--bg) 55%, var(--bg-edge) 100%);
 }
 
 .static-hero .stage {
@@ -396,11 +412,11 @@ p {
 .static-layers,
 .static-book {
   padding: clamp(48px, 10vh, 112px) var(--pad);
-  background: var(--lantern-deep);
+  background: var(--bg-deep);
 }
 
 .static-book {
-  background: var(--lantern);
+  background: var(--bg);
 }
 
 .static-layers h2,

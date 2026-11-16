@@ -8,7 +8,7 @@ import {
 } from "react";
 
 export type Lang = "en" | "es";
-export type PhaseKey = "hero" | "explode" | "rebuild" | "extras" | "box" | "book";
+export type PhaseKey = "hero" | "explode" | "rebuild" | "extras" | "counter" | "book";
 
 const en = {
   brand: "KAI",
@@ -16,7 +16,7 @@ const en = {
   lang: { en: "EN", es: "ES" },
   langLabel: "Language",
   scrollHint: "Scroll",
-  storyLabel: "KAI ramen, taken apart and packed to go",
+  storyLabel: "KAI ramen, taken apart and served at the counter",
   phases: {
     hero: {
       title: "One bowl. Six layers.",
@@ -34,9 +34,9 @@ const en = {
       title: "Now, the extras.",
       text: "Menma, narutomaki, chopsticks.",
     },
-    box: {
-      title: "To go.",
-      text: "All in. Lid down.",
+    counter: {
+      title: "Pull up a stool.",
+      text: "Lantern on. Served at the counter.",
     },
     book: {
       title: "A seat for two.",
@@ -74,7 +74,7 @@ const es: typeof en = {
   lang: { en: "EN", es: "ES" },
   langLabel: "Idioma",
   scrollHint: "Scroll",
-  storyLabel: "Ramen KAI, desarmado y empaquetado para llevar",
+  storyLabel: "Ramen KAI, desarmado y servido en la barra",
   phases: {
     hero: {
       title: "Un bowl. Seis capas.",
@@ -92,9 +92,9 @@ const es: typeof en = {
       title: "Ahora, los extras.",
       text: "Menma, narutomaki, palillos.",
     },
-    box: {
-      title: "Para llevar.",
-      text: "Todo dentro. Tapa cerrada.",
+    counter: {
+      title: "Siéntate en la barra.",
+      text: "Farol encendido. Servido al momento.",
     },
     book: {
       title: "Mesa para dos.",
